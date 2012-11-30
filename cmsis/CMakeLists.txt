@@ -3,79 +3,95 @@ PROJECT(stm32cmsis)
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
 ENABLE_LANGUAGE(ASM)
 
-IF(NOT STM32_StdPeriphLib_DIR)
-    SET(STM32_StdPeriphLib_DIR "/opt/STM32F10x_StdPeriph_Lib_V3.5.0")
-    MESSAGE(STATUS "No STM32_StdPeriphLib_DIR specified, using default: " ${STM32_StdPeriphLib_DIR})
+IF(NOT STM32_SPL_DIR)
+	SET(STM32_SPL_DIR "/opt/STM32F10x_StdPeriph_Lib_V3.5.0")
+	MESSAGE(STATUS "No STM32_SPL_DIR specified, using default: " ${STM32_SPL_DIR})
+ENDIF()
+
+IF(NOT STM32_FAMILY)
+	SET(STM32_FAMILY "F10x")
+	MESSAGE(STATUS "No STM32_FAMILY specified, using default: " ${STM32_FAMILY})
+ENDIF()
+STRING(TOLOWER "${STM32_FAMILY}" STM32_FAMILY_L)
+STRING(TOUPPER "${STM32_FAMILY}" STM32_FAMILY_U)
+MESSAGE(STATUS "Building for STM32${STM32_FAMILY_U} family")
+
+IF(STM32_FAMILY_U STREQUAL "F10X")
+	INCLUDE_DIRECTORIES(
+		${STM32_SPL_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/
+		${STM32_SPL_DIR}/Libraries/CMSIS/CM3/CoreSupport/
+	)
+	SET(STM32_CMSIS_HEADERS
+		${STM32_SPL_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/system_stm32f10x.h
+		${STM32_SPL_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/stm32f10x.h
+		${STM32_SPL_DIR}/Libraries/CMSIS/CM3/CoreSupport/core_cm3.h
+	)
+	SET(CMSIS_SOURCES
+		${STM32_SPL_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/system_stm32f10x.c
+		${STM32_SPL_DIR}/Libraries/CMSIS/CM3/CoreSupport/core_cm3.c
+	)
+	SET(STM32_SPL_STARTUP_PATH ${STM32_SPL_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/)
+	SET(DENSITY_LIST_U HD HD_VL MD MD_VL LD LD_VL XD CL)
+ELSEIF(STM32_FAMILY_U STREQUAL "L1XX")
+	INCLUDE_DIRECTORIES(
+		${STM32_SPL_DIR}/Libraries/CMSIS/Device/ST/STM32L1xx/Include/
+		${STM32_SPL_DIR}/Libraries/CMSIS/Include/
+	)
+	SET(STM32_CMSIS_HEADERS
+		${STM32_SPL_DIR}/Libraries/CMSIS/Device/ST/STM32L1xx/Include/system_stm32l1xx.h
+		${STM32_SPL_DIR}/Libraries/CMSIS/Device/ST/STM32L1xx/Include/stm32l1xx.h
+		${STM32_SPL_DIR}/Libraries/CMSIS/Include/core_cm3.h
+		${STM32_SPL_DIR}/Libraries/CMSIS/Include/core_cmFunc.h
+		${STM32_SPL_DIR}/Libraries/CMSIS/Include/core_cmInstr.h
+	)
+	SET(CMSIS_SOURCES
+		${STM32_SPL_DIR}/Libraries/CMSIS/Device/ST/STM32L1xx/Source/Templates/system_stm32l1xx.c
+	)
+	SET(STM32_SPL_STARTUP_PATH ${STM32_SPL_DIR}/Libraries/CMSIS/Device/ST/STM32L1xx/Source/Templates/gcc_ride7/)
+	SET(DENSITY_LIST_U HD MD MDP)
+ELSE()
+	MESSAGE(FATAL_ERROR "Unknown stm32 family.")
 ENDIF()
 
 INCLUDE_DIRECTORIES(
-    ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/
-    ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/CoreSupport/
-    ${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-SET(CMSIS_SOURCES
-    ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/system_stm32f10x.c
-    ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/CoreSupport/core_cm3.c
-)
+FOREACH(DENSITY_U ${DENSITY_LIST_U})
+	STRING(TOLOWER "${DENSITY_U}" DENSITY_L)
 
-SET(STM32_STARTUP_CL ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_cl.s)
-SET(STM32_STARTUP_HD ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_hd.s)
-SET(STM32_STARTUP_HD_VL ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_hd_vl.s)
-SET(STM32_STARTUP_LD ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_ld.s)
-SET(STM32_STARTUP_LD_VL ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_ld_vl.s)
-SET(STM32_STARTUP_MD ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md.s)
-SET(STM32_STARTUP_MD_VL ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_md_vl.s)
-SET(STM32_STARTUP_XL ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/startup/gcc_ride7/startup_stm32f10x_xl.s)
+	SET(STM32_STARTUP_${DENSITY_U} ${STM32_SPL_STARTUP_PATH}/startup_stm32${STM32_FAMILY_L}_${DENSITY_L}.s)
+	SET(STM32_STARTUPS ${STM32_STARTUPS} ${STM32_STARTUP_${DENSITY_U}})
 
-ADD_LIBRARY(cmsis_cl ${CMSIS_SOURCES})
-SET_TARGET_PROPERTIES(cmsis_cl PROPERTIES COMPILE_FLAGS "-DSTM32F10X_CL")
+	ADD_LIBRARY(stm32${STM32_FAMILY_L}_cmsis_${DENSITY_L} ${CMSIS_SOURCES})
+	SET_TARGET_PROPERTIES(stm32${STM32_FAMILY_L}_cmsis_${DENSITY_L} PROPERTIES COMPILE_FLAGS "-DSTM32${STM32_FAMILY_U}_${DENSITY_U}")
+	SET(CMSIS_TARGETS ${CMSIS_TARGETS} stm32${STM32_FAMILY_L}_cmsis_${DENSITY_L})
+ENDFOREACH(DENSITY_U)
 
-ADD_LIBRARY(cmsis_hd ${CMSIS_SOURCES})
-SET_TARGET_PROPERTIES(cmsis_hd PROPERTIES COMPILE_DEFINITIONS "STM32F10X_HD")
 
-ADD_LIBRARY(cmsis_hd_vl ${CMSIS_SOURCES})
-SET_TARGET_PROPERTIES(cmsis_hd_vl PROPERTIES COMPILE_DEFINITIONS "STM32F10X_HD_VL")
-
-ADD_LIBRARY(cmsis_ld ${CMSIS_SOURCES})
-SET_TARGET_PROPERTIES(cmsis_ld PROPERTIES COMPILE_DEFINITIONS "STM32F10X_LD")
-
-ADD_LIBRARY(cmsis_ld_vl ${CMSIS_SOURCES})
-SET_TARGET_PROPERTIES(cmsis_ld_vl PROPERTIES COMPILE_DEFINITIONS "STM32F10X_LD_VL")
-
-ADD_LIBRARY(cmsis_md ${CMSIS_SOURCES})
-SET_TARGET_PROPERTIES(cmsis_md PROPERTIES COMPILE_DEFINITIONS "STM32F10X_MD")
-
-ADD_LIBRARY(cmsis_md_vl ${CMSIS_SOURCES})
-SET_TARGET_PROPERTIES(cmsis_md_vl PROPERTIES COMPILE_DEFINITIONS "STM32F10X_MD_VL")
-
-ADD_LIBRARY(cmsis_xl ${CMSIS_SOURCES})
-SET_TARGET_PROPERTIES(cmsis_xl PROPERTIES COMPILE_DEFINITIONS "STM32F10X_XL")
-
-INSTALL(TARGETS cmsis_cl cmsis_hd cmsis_hd_vl cmsis_ld cmsis_ld_vl cmsis_md cmsis_md_vl cmsis_xl
+INSTALL(TARGETS ${CMSIS_TARGETS}
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
 
-INSTALL(FILES 
-    ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/system_stm32f10x.h
-    ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/CoreSupport/core_cm3.h
-    ${STM32_StdPeriphLib_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x/stm32f10x.h
-    DESTINATION
-    include
+INSTALL(FILES
+	${STM32_CMSIS_HEADERS}
+	DESTINATION
+	include/stm32${STM32_FAMILY_L}
 )
 
-INSTALL(FILES 
-    ${STM32_STARTUP_CL}
-    ${STM32_STARTUP_HD}
-    ${STM32_STARTUP_HD_VL}
-    ${STM32_STARTUP_MD}
-    ${STM32_STARTUP_MD_VL}
-    ${STM32_STARTUP_LD}
-    ${STM32_STARTUP_LD_VL}
-    ${STM32_STARTUP_XL}
-    ${CMAKE_CURRENT_SOURCE_DIR}/stm32_flash.ld.in
-    DESTINATION
-    share/cmsis/
+INSTALL(FILES
+	${STM32_STARTUPS}
+	DESTINATION
+	share/cmsis/
 )
+
+INSTALL(FILES
+	${CMAKE_CURRENT_SOURCE_DIR}/stm32_flash.ld.in
+	RENAME
+	stm32${STM32_FAMILY_L}_flash.ld.in
+	DESTINATION
+	share/cmsis/
+)
+
